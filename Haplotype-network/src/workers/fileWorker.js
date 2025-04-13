@@ -17,7 +17,7 @@ self.onmessage = (event) => {
     }
   });
 
-  // ⬇️ 這裡很重要，必須回傳一個物件！
+  
   self.postMessage({ geneNames, sequences });
 };
 
