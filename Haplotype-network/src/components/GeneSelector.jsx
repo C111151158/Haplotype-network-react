@@ -16,7 +16,7 @@ const GeneSelector = ({
   selectedGene,
   setSelectedGene,
   geneColors,
-  geneSequences, // ✅ 新增：從 App 傳入所有基因序列
+  geneSequences, //從 App 傳入所有基因序列
   setActiveSimilarityGroup,
 }) => {
   const [currentPage, setCurrentPage] = useState(0);
@@ -31,7 +31,7 @@ const GeneSelector = ({
 
   const handleSelect = (geneName) => {
     setSelectedGene(selectedGene === geneName ? null : geneName);
-    setSimilarGenes([]); // 清除先前的比對結果
+    setSimilarGenes([]); 
     setActiveSimilarityGroup([]);
   };
 

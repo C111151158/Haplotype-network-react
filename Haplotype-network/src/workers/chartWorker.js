@@ -15,7 +15,7 @@ self.onmessage = (event) => {
     }
   });
 
-  self.postMessage(chartData); // ✅ 回傳計算好的數據
+  self.postMessage(chartData); // 回傳計算好的數據
 };
 
   

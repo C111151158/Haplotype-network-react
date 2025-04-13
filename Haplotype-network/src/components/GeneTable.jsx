@@ -31,7 +31,7 @@ const GeneTable = ({
       return updatedGenes;
     });
 
-    // 更新地圖資料（讓 useMemo 的依賴重新計算）
+    // 更新地圖資料
     setTimeout(updateMapData, 0);
   };
 
