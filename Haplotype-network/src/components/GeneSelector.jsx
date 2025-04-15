@@ -195,7 +195,7 @@ const GeneSelector = ({
           {paginatedResults.length > 0 && (
             <div style={{ marginTop: "10px", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
               <strong>比對結果：</strong>
-              <ul style={{ maxHeight: "200px", overflowY: "auto", paddingLeft: "20px" }}>
+              <ul style={{ maxHeight: "800px", overflowY: "auto", paddingLeft: "20px" }}>
                 {paginatedResults.map(({ name, similarity }) => (
                   <li key={name}>
                     <span style={{ color: geneColors[name] || "#000" }}>{name}</span> —{" "}

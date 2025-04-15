@@ -132,7 +132,7 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
             position: "absolute",
             bottom: "5px",
             left: "5px",
-            backgroundColor: "rgba(255, 255, 255, 0.85)",
+            backgroundColor: "rgba(248, 7, 7, 0.85)",
             padding: "4px 8px",
             borderRadius: "5px",
             fontSize: "12px",
