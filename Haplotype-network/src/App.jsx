@@ -3,7 +3,6 @@ import TaiwanMapComponent from "./components/TaiwanMapComponent";
 import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent";
 import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
-import SequenceCompareComponent from "./components/SequenceCompareComponent";
 import GeneSelector from "./components/GeneSelector";
 
 // 顏色產生器
@@ -15,13 +14,11 @@ const App = () => {
   const [genes, setGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [sequences, setSequences] = useState([]);
   const [mapKey, setMapKey] = useState(0);
   const [selectedGene, setSelectedGene] = useState(null);
 
   const [activeGene, setActiveGene] = useState(null);
   const [activeSimilarityGroup, setActiveSimilarityGroup] = useState([]);
-
   const [geneSequences, setGeneSequences] = useState({});
 
   const genesPerPage = 500;
@@ -102,16 +99,13 @@ const App = () => {
           setActiveSimilarityGroup={setActiveSimilarityGroup}
         />
 
-        {/* 右：比對模組 + 篩選後地圖 */}
+        {/* 右：篩選後地圖 */}
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          
-
           <FilteredTaiwanMapComponent
             genes={genes}
             geneColors={geneColors}
             activeGene={selectedGene}
             activeSimilarityGroup={activeSimilarityGroup}
-            
           />
         </div>
       </div>
@@ -133,7 +127,7 @@ const App = () => {
         </button>
       </div>
 
-      {/* 資料表與比對模組 */}
+      {/* 資料表與樣本列表 */}
       <div style={{ display: "flex", gap: "20px" }}>
         <HaplotypeList paginatedGenes={paginatedGenes} geneColors={geneColors} />
         <GeneTable
@@ -146,13 +140,6 @@ const App = () => {
           geneColors={geneColors}
         />
       </div>
-
-      <SequenceCompareComponent
-            selectedGene={selectedGene}
-            geneSequences={geneSequences}
-            setActiveSimilarityGroup={setActiveSimilarityGroup}
-          />
-
     </div>
   );
 };

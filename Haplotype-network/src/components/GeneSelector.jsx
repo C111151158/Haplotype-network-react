@@ -18,96 +18,87 @@ const GeneSelector = ({
   const [resultTotalPages, setResultTotalPages] = useState(0);
   const [updateToggle, setUpdateToggle] = useState(false);
 
-  const allResultsList = useRef([]); // 累積比對結果
-  const allResultsMap = useRef(new Map()); // Map 分頁
+  const precomputedSimilarities = useRef([]);
+  const allResults = useRef(new Map());
 
   const pageSize = 15;
   const totalPages = Math.ceil(genes.length / pageSize);
-  const currentGenes = genes.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize
-  );
+  const currentGenes = genes.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
   const handleSelect = (geneName) => {
     const isDeselecting = selectedGene === geneName;
     setSelectedGene(isDeselecting ? null : geneName);
-    allResultsList.current = [];
-    allResultsMap.current.clear();
+    allResults.current.clear();
+    precomputedSimilarities.current = [];
     setResultPage(0);
     setResultTotalPages(0);
     setActiveSimilarityGroup([]);
   };
 
-  const handlePageChange = (direction) => {
-    setCurrentPage((prev) =>
-      direction === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, totalPages - 1)
-    );
+  const handlePageChange = (dir) => {
+    setCurrentPage((prev) => (dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, totalPages - 1)));
   };
 
-  const handleResultPageChange = (direction) => {
+  const handleResultPageChange = (dir) => {
     setResultPage((prev) =>
-      direction === "prev"
-        ? Math.max(prev - 1, 0)
-        : Math.min(prev + 1, resultTotalPages - 1)
+      dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, resultTotalPages - 1)
     );
   };
 
-  const updateMapFromResults = () => {
-    const list = allResultsList.current;
-    allResultsMap.current.clear();
-    const pageCount = Math.ceil(list.length / pageSize);
-    for (let i = 0; i < pageCount; i++) {
-      const page = list.slice(i * pageSize, (i + 1) * pageSize);
-      allResultsMap.current.set(i, page);
+  const runWorkerIfNeeded = () => {
+    return new Promise((resolve, reject) => {
+      if (!selectedGene || !geneSequences[selectedGene]) return resolve([]);
+
+      if (precomputedSimilarities.current.length > 0) return resolve(precomputedSimilarities.current);
+
+      setProgress({ completed: 0, total: 1 });
+      const worker = new Worker(new URL("../workers/compareWorker.js", import.meta.url), { type: "module" });
+
+      worker.onmessage = (e) => {
+        const { type, completed, total, data } = e.data;
+        if (type === "progress") {
+          setProgress({ completed, total });
+        } else if (type === "done") {
+          precomputedSimilarities.current = data;
+          setProgress(null);
+          worker.terminate();
+          resolve(data);
+        }
+      };
+
+      worker.onerror = (err) => {
+        console.error("Worker error:", err);
+        setProgress(null);
+        worker.terminate();
+        reject(err);
+      };
+
+      worker.postMessage({
+        targetGene: selectedGene,
+        geneSequences,
+      });
+    });
+  };
+
+  const filterBySimilarity = async (min, max) => {
+    const all = await runWorkerIfNeeded();
+
+    const filtered = all
+      .filter(({ similarity }) => similarity >= min && similarity <= max)
+      .sort((a, b) => b.similarity - a.similarity);
+
+    allResults.current.clear();
+    for (let i = 0; i < filtered.length; i += pageSize) {
+      allResults.current.set(allResults.current.size, filtered.slice(i, i + pageSize));
     }
-    setResultTotalPages(pageCount);
+
+    setResultPage(0);
+    setResultTotalPages(allResults.current.size);
+    setActiveSimilarityGroup(filtered.map((g) => g.name));
     setUpdateToggle((u) => !u);
   };
 
-  const findSimilarGenes = (min, max) => {
-    if (!selectedGene || !geneSequences[selectedGene]) return;
-
-    setProgress({ completed: 0, total: 1 });
-    allResultsList.current = [];
-    allResultsMap.current.clear();
-    setResultPage(0);
-    setResultTotalPages(0);
-
-    const worker = new Worker(new URL("../workers/compareWorker.js", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (event) => {
-      const { type, completed, total, data } = event.data;
-
-      if (type === "chunk") {
-        allResultsList.current.push(...data);
-        updateMapFromResults();
-      } else if (type === "progress") {
-        setProgress({ completed, total });
-      } else if (type === "done") {
-        const allGenes = allResultsList.current;
-        setActiveSimilarityGroup(allGenes.map((g) => g.name));
-        setProgress(null);
-        worker.terminate();
-      }
-    };
-
-    worker.onerror = (err) => {
-      console.error("Worker error:", err);
-      setProgress(null);
-      worker.terminate();
-    };
-
-    worker.postMessage({
-      targetGene: selectedGene,
-      geneSequences,
-      min,
-      max,
-    });
-  };
-
-  const paginatedResults = allResultsMap.current.get(resultPage) || [];
+  const paginatedResults = allResults.current.get(resultPage) || [];
 
   return (
     <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
@@ -115,16 +106,10 @@ const GeneSelector = ({
         <button
           onClick={() => {
             setSelectedGene(null);
-            allResultsList.current = [];
-            allResultsMap.current.clear();
+            precomputedSimilarities.current = [];
+            allResults.current.clear();
             setActiveSimilarityGroup([]);
             showAllGenes();
-          }}
-          style={{
-            backgroundColor: selectedGene === null ? "#ddd" : "#fff",
-            padding: "6px 12px",
-            border: "1px solid #aaa",
-            cursor: "pointer",
           }}
         >
           顯示所有基因
@@ -138,8 +123,7 @@ const GeneSelector = ({
               showSpecificGene();
             }}
             style={{
-              backgroundColor:
-                selectedGene === gene.name ? "#cde" : geneColors[gene.name] || "#fff",
+              backgroundColor: selectedGene === gene.name ? "#cde" : geneColors[gene.name] || "#fff",
               color: "#000",
               border: "1px solid #aaa",
               padding: "4px 10px",
@@ -164,10 +148,10 @@ const GeneSelector = ({
       {selectedGene && (
         <div style={{ flex: 1 }}>
           <strong>比對相似基因：</strong>
-          <div style={{ display: "flex", gap: "10px", marginTop: "5px", flexWrap: "wrap", alignItems: "center" }}>
-            <button onClick={() => findSimilarGenes(100, 100)}>100% 相似</button>
-            <button onClick={() => findSimilarGenes(90, 99.99)}>90%~99%</button>
-            <button onClick={() => findSimilarGenes(80, 89.99)}>80%~89%</button>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "5px" }}>
+            <button onClick={() => filterBySimilarity(100, 100)}>100% 相似</button>
+            <button onClick={() => filterBySimilarity(90, 99.99)}>90%~99%</button>
+            <button onClick={() => filterBySimilarity(80, 89.99)}>80%~89%</button>
           </div>
 
           <div style={{ display: "flex", gap: "8px", marginTop: "10px", alignItems: "center" }}>
@@ -192,7 +176,7 @@ const GeneSelector = ({
             <button
               onClick={() => {
                 if (customMin <= customMax) {
-                  findSimilarGenes(customMin, customMax);
+                  filterBySimilarity(customMin, customMax);
                 } else {
                   alert("請確認相似度範圍有效（最小 <= 最大）");
                 }
@@ -214,7 +198,8 @@ const GeneSelector = ({
               <ul style={{ maxHeight: "200px", overflowY: "auto", paddingLeft: "20px" }}>
                 {paginatedResults.map(({ name, similarity }) => (
                   <li key={name}>
-                    <span style={{ color: geneColors[name] || "#000" }}>{name}</span> — {similarity.toFixed(1)}%
+                    <span style={{ color: geneColors[name] || "#000" }}>{name}</span> —{" "}
+                    {similarity.toFixed(1)}%
                   </li>
                 ))}
               </ul>
@@ -223,10 +208,7 @@ const GeneSelector = ({
                   上一頁
                 </button>
                 <span>第 {resultPage + 1} 頁 / 共 {resultTotalPages} 頁</span>
-                <button
-                  onClick={() => handleResultPageChange("next")}
-                  disabled={resultPage >= resultTotalPages - 1}
-                >
+                <button onClick={() => handleResultPageChange("next")} disabled={resultPage >= resultTotalPages - 1}>
                   下一頁
                 </button>
               </div>
