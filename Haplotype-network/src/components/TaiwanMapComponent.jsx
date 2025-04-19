@@ -49,21 +49,19 @@ const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
   );
 }, areEqual);
 
-const TaiwanMapComponent = ({ cityGeneData, geneColors }) => {
+const TaiwanMapComponent = ({ genes, cityGeneData, geneColors }) => {
   const [latLon, setLatLon] = useState({ lat: 0, lon: 0 });
   const [selectedGenes, setSelectedGenes] = useState(() =>
     Array.from(new Set(Object.values(cityGeneData).flat().map((g) => g.name)))
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-
   const genesPerPage = 500;
 
   const allGenes = useMemo(() => {
-    return Array.from(new Set(Object.values(cityGeneData).flat().map((g) => g.name))).sort();
-  }, [cityGeneData]);
+    return genes.map((g) => g.name); // ✅ 使用 GeneTable 的順序
+  }, [genes]);
 
-  // ✅ 新增 useEffect：cityGeneData 更新時，自動全選
   useEffect(() => {
     setSelectedGenes(allGenes);
   }, [allGenes]);
@@ -118,77 +116,85 @@ const TaiwanMapComponent = ({ cityGeneData, geneColors }) => {
   };
 
   return (
-    <div style={{ display: "flex", gap: "10px" }}>
-      {/* 地圖區域 */}
-      <div
-        style={{ position: "relative", width: `400px`, height: `600px` }}
-        onMouseMove={handleMouseMove}
-      >
-        <img src={TaiwanMapImage} alt="Taiwan Map" width={400} height={600} />
-        {Object.entries(filteredCityGeneData).map(([city, chartData]) => (
-          <CityPieChart
-            key={city}
-            city={city}
-            chartData={chartData}
-            geneColors={geneColors}
-            position={cityCoordinates[city]}
-          />
-        ))}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "5px",
-            left: "5px",
-            backgroundColor: "rgba(255, 255, 255, 0.85)",
-            padding: "4px 8px",
-            borderRadius: "5px",
-            fontSize: "12px",
-            fontFamily: "monospace",
-          }}
-        >
-          經度: {latLon.lon}°E<br />
-          緯度: {latLon.lat}°N
-        </div>
-      </div>
-
-      {/* 勾選表單 */}
-      <div style={{ maxHeight: "600px", overflowY: "auto", width: "260px" }}>
-        <h4>選擇顯示基因：</h4>
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="搜尋基因名稱"
-          style={{ width: "100%", marginBottom: "8px" }}
-        />
-        <div style={{ display: "flex", gap: "5px", marginBottom: "8px" }}>
-          <button onClick={handleSelectAll}>全選</button>
-          <button onClick={handleClearAll}>清除選擇</button>
-        </div>
-        {currentGenes.map((name) => (
-          <label key={name} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <input
-              type="checkbox"
-              checked={selectedGenes.includes(name)}
-              onChange={() => toggleGene(name)}
-            />
-            <span style={{ color: geneColors[name] || "black" }}>{name}</span>
-          </label>
-        ))}
-        <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-          <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
-            上一頁
-          </button>
-          <span>第 {currentPage + 1} 頁 / 共 {totalPages} 頁</span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={currentPage >= totalPages - 1}
-          >
-            下一頁
-          </button>
-        </div>
-      </div>
+    <>
+      <div style={{ display: "flex", gap: "10px" }}>
+  {/* 地圖區域 */}
+  <div
+    style={{ position: "relative", width: `400px`, height: `600px` }}
+    onMouseMove={handleMouseMove}
+  >
+    <img src={TaiwanMapImage} alt="Taiwan Map" width={400} height={600} />
+    {Object.entries(filteredCityGeneData).map(([city, chartData]) => (
+      <CityPieChart
+        key={city}
+        city={city}
+        chartData={chartData}
+        geneColors={geneColors}
+        position={cityCoordinates[city]}
+      />
+    ))}
+    <div
+      style={{
+        position: "absolute",
+        bottom: "5px",
+        left: "5px",
+        backgroundColor: "rgba(236, 15, 15, 0.85)",
+        padding: "4px 8px",
+        borderRadius: "5px",
+        fontSize: "12px",
+        fontFamily: "monospace",
+      }}
+    >
+      經度: {latLon.lon}°E<br />
+      緯度: {latLon.lat}°N
     </div>
+  </div>
+
+  {/* 表單＋頁碼 垂直排 */}
+  <div style={{ display: "flex", flexDirection: "column", width: "260px" }}>
+    {/* 表單區塊 */}
+    <div style={{ flex: "1", overflowY: "auto", maxHeight: "560px" }}>
+      <h4>選擇顯示基因：</h4>
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="搜尋基因名稱"
+        style={{ width: "100%", marginBottom: "8px" }}
+      />
+      <div style={{ display: "flex", gap: "5px", marginBottom: "8px" }}>
+        <button onClick={handleSelectAll}>全選</button>
+        <button onClick={handleClearAll}>清除選擇</button>
+      </div>
+      {currentGenes.map((name) => (
+        <label key={name} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <input
+            type="checkbox"
+            checked={selectedGenes.includes(name)}
+            onChange={() => toggleGene(name)}
+          />
+          <span style={{ color: geneColors[name] || "black" }}>{name}</span>
+        </label>
+      ))}
+    </div>
+
+    {/* 頁碼按鈕放下面 */}
+    <div style={{ marginTop: "10px", display: "flex", gap: "10px", justifyContent: "center" }}>
+      <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
+        上一頁
+      </button>
+      <span>第 {currentPage + 1} 頁 / 共 {totalPages} 頁</span>
+      <button
+        onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+        disabled={currentPage >= totalPages - 1}
+      >
+        下一頁
+      </button>
+    </div>
+  </div>
+  </div>
+
+    </>
   );
 };
 

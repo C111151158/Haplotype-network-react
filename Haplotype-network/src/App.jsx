@@ -72,6 +72,7 @@ const App = () => {
 
       <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
         <TaiwanMapComponent
+          genes={genes}
           cityGeneData={cityGeneData}
           geneColors={geneColors}
           cityUpdateFlags={cityUpdateFlags}

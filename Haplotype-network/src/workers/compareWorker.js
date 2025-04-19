@@ -1,38 +1,55 @@
-function calculateSimilarity(seq1, seq2) {
-  const minLen = Math.min(seq1.length, seq2.length);
-  let matchCount = 0;
-  for (let i = 0; i < minLen; i++) {
-    if (seq1[i] === seq2[i]) matchCount++;
+// 計算字串相似度，這裡使用的是基於字符比較的快速相似度方法
+function fastSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let match = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) match++;
   }
-  return (matchCount / minLen) * 100;
+  return (match / a.length) * 100;
 }
 
-onmessage = function (e) {
+// 設定每批處理的基因數量
+const CHUNK_SIZE = 100; // 調整每批大小
+
+// 處理比對
+onmessage = async (e) => {
   const { targetGene, geneSequences } = e.data;
-  const targetSeq = geneSequences[targetGene];
-  const allGenes = Object.entries(geneSequences).filter(([name]) => name !== targetGene);
 
-  const chunkSize = 200;
+  // 記錄當前處理的基因名稱和其對應的序列
+  const targetSequence = geneSequences[targetGene];
+  
+  // 所有基因名稱（假設是基因ID陣列）
+  const allGenes = Object.keys(geneSequences);
+  const totalGenes = allGenes.length;
+
   let completed = 0;
-  const total = allGenes.length;
-  const allSimilarities = [];
+  let results = [];
 
-  function processChunk(startIndex) {
-    const chunk = allGenes.slice(startIndex, startIndex + chunkSize);
-    for (const [name, seq] of chunk) {
-      const similarity = calculateSimilarity(targetSeq, seq);
-      allSimilarities.push({ name, similarity });
-      completed++;
-    }
+  // 從 0 開始，每次處理 CHUNK_SIZE 筆基因
+  for (let i = 0; i < totalGenes; i += CHUNK_SIZE) {
+    const chunk = allGenes.slice(i, i + CHUNK_SIZE);
+    const chunkResults = chunk.map((gene) => {
+      const similarity = fastSimilarity(targetSequence, geneSequences[gene]);
+      return { name: gene, similarity };
+    });
 
-    postMessage({ type: "progress", completed, total });
+    // 將這批結果發送回主線程
+    postMessage({
+      type: 'batch',
+      data: chunkResults,
+      completed: Math.min(i + CHUNK_SIZE, totalGenes),
+      total: totalGenes,
+    });
 
-    if (startIndex + chunkSize < total) {
-      setTimeout(() => processChunk(startIndex + chunkSize), 10);
-    } else {
-      postMessage({ type: "done", data: allSimilarities });
-    }
+    completed = Math.min(i + CHUNK_SIZE, totalGenes);
+
+    // 插入小延遲，防止阻塞 UI
+    await new Promise((resolve) => setTimeout(resolve, 100)); // 稍微增加延遲
+
   }
 
-  processChunk(0);
+  // 完成所有批次處理
+  postMessage({ type: 'done', results });
 };
+
+
