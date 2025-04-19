@@ -5,7 +5,6 @@ import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
 import GeneSelector from "./components/GeneSelector";
 
-// 顏色產生器
 const generateColors = (num) => {
   return Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
 };
@@ -14,30 +13,29 @@ const App = () => {
   const [genes, setGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [mapKey, setMapKey] = useState(0);
   const [selectedGene, setSelectedGene] = useState(null);
-
   const [activeGene, setActiveGene] = useState(null);
   const [activeSimilarityGroup, setActiveSimilarityGroup] = useState([]);
   const [geneSequences, setGeneSequences] = useState({});
+  const [cityUpdateFlags, setCityUpdateFlags] = useState({});
+  const [cityGeneData, setCityGeneData] = useState({});
 
   const genesPerPage = 500;
   const totalPages = Math.ceil(genes.length / genesPerPage);
-  const startIdx = (currentPage - 1) * genesPerPage;
-  const endIdx = startIdx + genesPerPage;
-  const paginatedGenes = genes.slice(startIdx, endIdx);
+  const paginatedGenes = genes.slice((currentPage - 1) * genesPerPage, currentPage * genesPerPage);
 
-  const updateMapData = () => {
-    setMapKey((prevKey) => prevKey + 1);
+  const updateMapData = (updatedCities) => {
+    setCityUpdateFlags((prev) => {
+      const next = { ...prev };
+      for (const city of updatedCities) {
+        next[city] = (next[city] || 0) + 1;
+      }
+      return next;
+    });
   };
 
-  const showAllGenes = () => {
-    setActiveGene(null);
-  };
-
-  const showSpecificGene = () => {
-    if (selectedGene) setActiveGene(selectedGene);
-  };
+  const showAllGenes = () => setActiveGene(null);
+  const showSpecificGene = () => selectedGene && setActiveGene(selectedGene);
 
   useEffect(() => {
     if (window.Worker) {
@@ -46,27 +44,23 @@ const App = () => {
       });
 
       worker.onmessage = (event) => {
-        console.log("Worker 回傳：", event.data);
         const { geneNames, sequences } = event.data;
-
-        const uniqueColors = generateColors(geneNames.length);
-        const newColors = {};
+        const colors = {};
+        const generatedColors = generateColors(geneNames.length);
         geneNames.forEach((name, index) => {
-          newColors[name] = uniqueColors[index % uniqueColors.length];
+          colors[name] = generatedColors[index % generatedColors.length];
         });
 
-        setGeneColors(newColors);
+        setGeneColors(colors);
         setGenes(geneNames.map((name) => ({ name, counts: {} })));
         setGeneSequences(sequences);
       };
 
-      window.handleFileChange = (event) => {
-        const file = event.target.files[0];
+      window.handleFileChange = (e) => {
+        const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => {
-          worker.postMessage(e.target.result);
-        };
+        reader.onload = (e) => worker.postMessage(e.target.result);
         reader.readAsText(file);
       };
     }
@@ -76,18 +70,12 @@ const App = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>
       <input type="file" accept=".fa,.fasta,.txt" onChange={(e) => window.handleFileChange(e)} />
 
-      {/* 主體區域：地圖 + 選擇器 + 篩選後地圖 */}
       <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-        {/* 左：地圖 */}
         <TaiwanMapComponent
-          key={mapKey}
-          genes={genes}
+          cityGeneData={cityGeneData}
           geneColors={geneColors}
-          activeGene={activeGene}
-          activeSimilarityGroup={activeSimilarityGroup}
+          cityUpdateFlags={cityUpdateFlags}
         />
-
-        {/* 中：基因選擇器 */}
         <GeneSelector
           genes={genes}
           selectedGene={selectedGene}
@@ -98,36 +86,24 @@ const App = () => {
           geneSequences={geneSequences}
           setActiveSimilarityGroup={setActiveSimilarityGroup}
         />
-
-        {/* 右：篩選後地圖 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <FilteredTaiwanMapComponent
-            genes={genes}
-            geneColors={geneColors}
-            activeGene={selectedGene}
-            activeSimilarityGroup={activeSimilarityGroup}
-          />
-        </div>
+        <FilteredTaiwanMapComponent
+          genes={genes}
+          geneColors={geneColors}
+          activeGene={selectedGene}
+          activeSimilarityGroup={activeSimilarityGroup}
+        />
       </div>
 
-      {/* 分頁控制 */}
       <div style={{ marginTop: "10px" }}>
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-        >
+        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
           上一頁
         </button>
         <span> 第 {currentPage} 頁 / 共 {totalPages} 頁 </span>
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-        >
+        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
           下一頁
         </button>
       </div>
 
-      {/* 資料表與樣本列表 */}
       <div style={{ display: "flex", gap: "20px" }}>
         <HaplotypeList paginatedGenes={paginatedGenes} geneColors={geneColors} />
         <GeneTable
@@ -138,6 +114,7 @@ const App = () => {
           itemsPerPage={genesPerPage}
           updateMapData={updateMapData}
           geneColors={geneColors}
+          setCityGeneData={setCityGeneData} // 👈 傳給 GeneTable
         />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 const GeneTable = ({
   genes,
@@ -8,18 +8,39 @@ const GeneTable = ({
   itemsPerPage,
   updateMapData,
   geneColors,
+  setCityGeneData,
 }) => {
   const locations = [
     "台北", "新北", "基隆", "桃園", "新竹", "苗栗", "台中",
     "彰化", "南投", "雲林", "嘉義", "台南", "高雄", "屏東",
-    "花蓮", "台東", "宜蘭"
+    "花蓮", "台東", "宜蘭",
   ];
+
+  // 每次基因資料變動，重建 cityGeneData
+  useEffect(() => {
+    const cityMap = {};
+    for (const loc of locations) cityMap[loc] = [];
+
+    genes.forEach((gene) => {
+      locations.forEach((loc) => {
+        const count = gene.counts?.[loc] || 0;
+        if (count > 0) {
+          cityMap[loc].push({
+            name: gene.name,
+            color: geneColors[gene.name] || "#000",
+            value: count,
+          });
+        }
+      });
+    });
+
+    setCityGeneData(cityMap);
+  }, [genes, geneColors, setCityGeneData]);
 
   const handleEditGeneCount = (geneIndex, location, newValue) => {
     setGenes((prevGenes) => {
       const updatedGenes = [...prevGenes];
       const actualIndex = (currentPage - 1) * itemsPerPage + geneIndex;
-
       updatedGenes[actualIndex] = {
         ...updatedGenes[actualIndex],
         counts: {
@@ -27,12 +48,11 @@ const GeneTable = ({
           [location]: newValue ? parseInt(newValue, 10) : 0,
         },
       };
-
       return updatedGenes;
     });
 
-    // 更新地圖資料
-    setTimeout(updateMapData, 0);
+    // 只告知被修改的城市名稱
+    setTimeout(() => updateMapData([location]), 0);
   };
 
   return (
@@ -67,6 +87,7 @@ const GeneTable = ({
                   <td key={`${index}-${loc}`}>
                     <input
                       type="number"
+                      min="0"
                       value={gene.counts?.[loc] || 0}
                       onChange={(e) => handleEditGeneCount(index, loc, e.target.value)}
                       style={{ width: "40px" }}

@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useState } from "react";
+import React, { useMemo, memo, useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import TaiwanMapImage from "../assets/TW.png";
 import { cityCoordinates } from "../data/cityCoordinates";
@@ -49,22 +49,62 @@ const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
   );
 }, areEqual);
 
-const TaiwanMapComponent = ({ genes, geneColors }) => {
+const TaiwanMapComponent = ({ cityGeneData, geneColors }) => {
   const [latLon, setLatLon] = useState({ lat: 0, lon: 0 });
-  const [selectedGenes, setSelectedGenes] = useState(() => genes.map((g) => g.name));
+  const [selectedGenes, setSelectedGenes] = useState(() =>
+    Array.from(new Set(Object.values(cityGeneData).flat().map((g) => g.name)))
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+
   const genesPerPage = 500;
-  const totalPages = Math.ceil(genes.length / genesPerPage);
+
+  const allGenes = useMemo(() => {
+    return Array.from(new Set(Object.values(cityGeneData).flat().map((g) => g.name))).sort();
+  }, [cityGeneData]);
+
+  // ✅ 新增 useEffect：cityGeneData 更新時，自動全選
+  useEffect(() => {
+    setSelectedGenes(allGenes);
+  }, [allGenes]);
 
   const filteredGeneList = useMemo(() => {
-    return genes.filter((g) => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [genes, searchTerm]);
+    return allGenes.filter((name) =>
+      name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allGenes, searchTerm]);
 
   const currentGenes = filteredGeneList.slice(
     currentPage * genesPerPage,
     (currentPage + 1) * genesPerPage
   );
+  const totalPages = Math.ceil(filteredGeneList.length / genesPerPage);
+
+  const toggleGene = (name) => {
+    setSelectedGenes((prev) =>
+      prev.includes(name) ? prev.filter((g) => g !== name) : [...prev, name]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setSelectedGenes(filteredGeneList);
+  };
+
+  const handleClearAll = () => {
+    setSelectedGenes([]);
+  };
+
+  const filteredCityGeneData = useMemo(() => {
+    const result = {};
+    for (const [city, genes] of Object.entries(cityGeneData)) {
+      const data = genes.filter((g) => selectedGenes.includes(g.name));
+      if (data.length > 0) {
+        const totalCount = data.reduce((sum, g) => sum + g.value, 0);
+        result[city] = { data, totalCount };
+      }
+    }
+    return result;
+  }, [cityGeneData, selectedGenes]);
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -77,39 +117,6 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
     setLatLon({ lat: lat.toFixed(4), lon: lon.toFixed(4) });
   };
 
-  const memoizedChartData = useMemo(() => {
-    const result = {};
-    for (const city of Object.keys(cityCoordinates)) {
-      const data = genes
-        .filter((g) => selectedGenes.includes(g.name))
-        .map((gene) => ({
-          name: gene.name,
-          value: gene.counts?.[city] || 0,
-        }))
-        .filter((item) => item.value > 0);
-
-      if (data.length > 0) {
-        const totalCount = data.reduce((sum, item) => sum + item.value, 0);
-        result[city] = { data, totalCount };
-      }
-    }
-    return result;
-  }, [genes, selectedGenes]);
-
-  const toggleGene = (name) => {
-    setSelectedGenes((prev) =>
-      prev.includes(name) ? prev.filter((g) => g !== name) : [...prev, name]
-    );
-  };
-
-  const handleSelectAll = () => {
-    setSelectedGenes(filteredGeneList.map((g) => g.name));
-  };
-
-  const handleClearAll = () => {
-    setSelectedGenes([]);
-  };
-
   return (
     <div style={{ display: "flex", gap: "10px" }}>
       {/* 地圖區域 */}
@@ -118,7 +125,7 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
         onMouseMove={handleMouseMove}
       >
         <img src={TaiwanMapImage} alt="Taiwan Map" width={400} height={600} />
-        {Object.entries(memoizedChartData).map(([city, chartData]) => (
+        {Object.entries(filteredCityGeneData).map(([city, chartData]) => (
           <CityPieChart
             key={city}
             city={city}
@@ -132,7 +139,7 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
             position: "absolute",
             bottom: "5px",
             left: "5px",
-            backgroundColor: "rgba(248, 7, 7, 0.85)",
+            backgroundColor: "rgba(255, 255, 255, 0.85)",
             padding: "4px 8px",
             borderRadius: "5px",
             fontSize: "12px",
@@ -144,7 +151,7 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
         </div>
       </div>
 
-      {/* 控制勾選表單 */}
+      {/* 勾選表單 */}
       <div style={{ maxHeight: "600px", overflowY: "auto", width: "260px" }}>
         <h4>選擇顯示基因：</h4>
         <input
@@ -158,23 +165,21 @@ const TaiwanMapComponent = ({ genes, geneColors }) => {
           <button onClick={handleSelectAll}>全選</button>
           <button onClick={handleClearAll}>清除選擇</button>
         </div>
-        {currentGenes.map((gene) => (
-          <label key={gene.name} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        {currentGenes.map((name) => (
+          <label key={name} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <input
               type="checkbox"
-              checked={selectedGenes.includes(gene.name)}
-              onChange={() => toggleGene(gene.name)}
+              checked={selectedGenes.includes(name)}
+              onChange={() => toggleGene(name)}
             />
-            <span style={{ color: geneColors[gene.name] || "black" }}>{gene.name}</span>
+            <span style={{ color: geneColors[name] || "black" }}>{name}</span>
           </label>
         ))}
         <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
           <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
             上一頁
           </button>
-          <span>
-            第 {currentPage + 1} 頁 / 共 {totalPages} 頁
-          </span>
+          <span>第 {currentPage + 1} 頁 / 共 {totalPages} 頁</span>
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={currentPage >= totalPages - 1}
