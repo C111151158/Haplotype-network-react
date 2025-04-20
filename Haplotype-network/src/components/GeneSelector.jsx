@@ -1,5 +1,4 @@
-// GeneSelector.jsx - Optimized for 100,000+ genes
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { FixedSizeList as List } from "react-window";
 
 const GeneSelector = ({
@@ -17,19 +16,24 @@ const GeneSelector = ({
   const [customMax, setCustomMax] = useState(100);
   const [progress, setProgress] = useState(null);
   const [results, setResults] = useState([]);
-
-  const workerRef = useRef(null);
-  const chunkedResults = useRef([]);
+  const [resultsPage, setResultsPage] = useState(0);
 
   const pageSize = 15;
   const totalPages = Math.ceil(genes.length / pageSize);
   const currentGenes = genes.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
+  const resultsPerPage = 100;
+  const resultsTotalPages = Math.ceil(results.length / resultsPerPage);
+  const currentResults = results.slice(
+    resultsPage * resultsPerPage,
+    (resultsPage + 1) * resultsPerPage
+  );
+
   const handleSelect = (geneName) => {
     const isDeselecting = selectedGene === geneName;
     setSelectedGene(isDeselecting ? null : geneName);
     setResults([]);
-    chunkedResults.current = [];
+    setResultsPage(0);
     setActiveSimilarityGroup([]);
   };
 
@@ -37,50 +41,46 @@ const GeneSelector = ({
     setCurrentPage((prev) => (dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, totalPages - 1)));
   };
 
-  const filterBySimilarity = (min, max) => {
+  const handleResultsPageChange = (dir) => {
+    setResultsPage((prev) =>
+      dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, resultsTotalPages - 1)
+    );
+  };
+
+  const filterBySimilarity = async (min, max) => {
     if (!selectedGene || !geneSequences[selectedGene]) return;
 
     setProgress({ completed: 0, total: 0 });
     setResults([]);
-    chunkedResults.current = [];
+    setResultsPage(0);
+    setActiveSimilarityGroup([]);
 
-    if (workerRef.current) {
-      workerRef.current.terminate();
-    }
+    try {
+      const response = await fetch("http://localhost:3000/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetName: selectedGene,
+          sequences: geneSequences,
+        }),
+      });
 
-    const worker = new Worker(new URL("../workers/compareWorker.js", import.meta.url), { type: "module" });
-    workerRef.current = worker;
+      if (!response.ok) throw new Error("比對請求失敗");
 
-    worker.onmessage = (e) => {
-      const { type, data, completed, total } = e.data;
-    
-      if (type === "progress") {
-        setProgress({ completed, total });
-      } else if (type === "batch") {
-        // 每批處理後，將結果添加到現有的結果中
-        const filtered = data.filter(({ similarity }) => similarity >= min && similarity <= max);
-        chunkedResults.current = [...chunkedResults.current, ...filtered];
-    
-        // 在這裡延遲更新狀態（例如在處理完成所有批次後再一次性更新）
-        if (completed === total) {
-          setResults([...chunkedResults.current].sort((a, b) => b.similarity - a.similarity));
-        }
-      } else if (type === "done") {
-        // 完成後
-        setProgress(null);
-        setActiveSimilarityGroup(chunkedResults.current.map((g) => g.name));
-        worker.terminate();
-      }
-    };
-    
+      const data = await response.json();
 
-    worker.onerror = (err) => {
-      console.error("Worker error:", err);
+      const filtered = data
+        .filter(({ similarity }) => similarity >= min && similarity <= max)
+        .sort((a, b) => b.similarity - a.similarity);
+
+      setResults(filtered);
+      setResultsPage(0);
+      setActiveSimilarityGroup(filtered.map((g) => g.name));
       setProgress(null);
-      worker.terminate();
-    };
-
-    worker.postMessage({ targetGene: selectedGene, geneSequences });
+    } catch (err) {
+      console.error("比對錯誤:", err);
+      setProgress(null);
+    }
   };
 
   return (
@@ -89,7 +89,6 @@ const GeneSelector = ({
         <button
           onClick={() => {
             setSelectedGene(null);
-            chunkedResults.current = [];
             setResults([]);
             setActiveSimilarityGroup([]);
             showAllGenes();
@@ -178,14 +177,9 @@ const GeneSelector = ({
           {results.length > 0 && (
             <div style={{ marginTop: "10px", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
               <strong>比對結果：</strong>
-              <List
-                height={600}
-                width={400}
-                itemCount={results.length}
-                itemSize={35}
-              >
+              <List height={600} width={400} itemCount={currentResults.length} itemSize={35}>
                 {({ index, style }) => {
-                  const { name, similarity } = results[index];
+                  const { name, similarity } = currentResults[index];
                   return (
                     <div key={name} style={style}>
                       <span style={{ color: geneColors[name] || "#000" }}>{name}</span> — {similarity.toFixed(1)}%
@@ -193,6 +187,18 @@ const GeneSelector = ({
                   );
                 }}
               </List>
+              <div style={{ marginTop: "10px", display: "flex", justifyContent: "center", gap: "10px" }}>
+                <button onClick={() => handleResultsPageChange("prev")} disabled={resultsPage === 0}>
+                  上一頁
+                </button>
+                <span>第 {resultsPage + 1} 頁 / 共 {resultsTotalPages} 頁</span>
+                <button
+                  onClick={() => handleResultsPageChange("next")}
+                  disabled={resultsPage >= resultsTotalPages - 1}
+                >
+                  下一頁
+                </button>
+              </div>
             </div>
           )}
         </div>
