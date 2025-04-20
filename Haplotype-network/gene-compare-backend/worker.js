@@ -23,3 +23,4 @@
  
  results.sort((a, b) => b.similarity - a.similarity);
  parentPort.postMessage(results);
+ 

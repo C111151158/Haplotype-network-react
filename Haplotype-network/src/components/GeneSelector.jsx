@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// GeneSelector.jsx
+import React, { useState, useEffect } from "react";
 import { FixedSizeList as List } from "react-window";
 
 const GeneSelector = ({
@@ -8,7 +9,6 @@ const GeneSelector = ({
   showAllGenes,
   showSpecificGene,
   geneColors,
-  geneSequences,
   setActiveSimilarityGroup,
 }) => {
   const [currentPage, setCurrentPage] = useState(0);
@@ -48,7 +48,7 @@ const GeneSelector = ({
   };
 
   const filterBySimilarity = async (min, max) => {
-    if (!selectedGene || !geneSequences[selectedGene]) return;
+    if (!selectedGene) return;
 
     setProgress({ completed: 0, total: 0 });
     setResults([]);
@@ -56,12 +56,16 @@ const GeneSelector = ({
     setActiveSimilarityGroup([]);
 
     try {
+      // 🔄 從後端抓 sequences
+      const res = await fetch("http://localhost:3000/sequences");
+      const { sequences } = await res.json();
+
       const response = await fetch("http://localhost:3000/compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetName: selectedGene,
-          sequences: geneSequences,
+          sequences,
         }),
       });
 

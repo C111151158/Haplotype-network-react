@@ -43,18 +43,36 @@ const App = () => {
         type: "module",
       });
 
-      worker.onmessage = (event) => {
-        const { geneNames, sequences } = event.data;
-        const colors = {};
-        const generatedColors = generateColors(geneNames.length);
-        geneNames.forEach((name, index) => {
-          colors[name] = generatedColors[index % generatedColors.length];
-        });
-
-        setGeneColors(colors);
-        setGenes(geneNames.map((name) => ({ name, counts: {} })));
-        setGeneSequences(sequences);
+      worker.onmessage = async (event) => {
+        const {sequences } = event.data;
+      
+        try {
+          await fetch("http://localhost:3000/uploadSequences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sequences }),
+          });
+      
+          console.log("基因序列成功上傳到後端");
+      
+          // 💡 從後端取回 geneNames 做顯示（但不保留 sequences）
+          const res = await fetch("http://localhost:3000/sequences");
+          const data = await res.json();
+      
+          const colors = {};
+          const generatedColors = generateColors(data.geneNames.length);
+          data.geneNames.forEach((name, index) => {
+            colors[name] = generatedColors[index % generatedColors.length];
+          });
+      
+          setGeneColors(colors);
+          setGenes(data.geneNames.map((name) => ({ name, counts: {} })));
+          setGeneSequences({}); // 空的
+        } catch (error) {
+          console.error("上傳或讀取基因資料失敗:", error);
+        }
       };
+      
 
       window.handleFileChange = (e) => {
         const file = e.target.files[0];

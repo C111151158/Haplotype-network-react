@@ -1,22 +1,30 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 const GeneTable = ({
   genes,
   setGenes,
-  paginatedGenes,
   currentPage,
   itemsPerPage,
   updateMapData,
   geneColors,
   setCityGeneData,
 }) => {
+  const [paginatedGenes, setPaginatedGenes] = useState([]);
+
   const locations = [
     "台北", "新北", "基隆", "桃園", "新竹", "苗栗", "台中",
     "彰化", "南投", "雲林", "嘉義", "台南", "高雄", "屏東",
     "花蓮", "台東", "宜蘭",
   ];
 
-  // 每次基因資料變動，重建 cityGeneData
+  // 分頁資料更新
+  useEffect(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    const endIdx = startIdx + itemsPerPage;
+    setPaginatedGenes(genes.slice(startIdx, endIdx));
+  }, [genes, currentPage, itemsPerPage]);
+
+  // 建立每個城市的基因資料，提供給地圖用
   useEffect(() => {
     const cityMap = {};
     for (const loc of locations) cityMap[loc] = [];
@@ -51,7 +59,6 @@ const GeneTable = ({
       return updatedGenes;
     });
 
-    // 只告知被修改的城市名稱
     setTimeout(() => updateMapData([location]), 0);
   };
 
