@@ -181,7 +181,7 @@ const GeneSelector = ({
           {results.length > 0 && (
             <div style={{ marginTop: "10px", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
               <strong>比對結果：</strong>
-              <List height={600} width={400} itemCount={currentResults.length} itemSize={35}>
+              <List height={400} width={400} itemCount={currentResults.length} itemSize={35}>
                 {({ index, style }) => {
                   const { name, similarity } = currentResults[index];
                   return (

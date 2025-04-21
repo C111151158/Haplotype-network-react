@@ -56,7 +56,7 @@ const TaiwanMapComponent = ({ genes, cityGeneData, geneColors }) => {
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const genesPerPage = 500;
+  const genesPerPage = 100;
 
   const allGenes = useMemo(() => {
     return genes.map((g) => g.name); // ✅ 使用 GeneTable 的順序

@@ -9,3 +9,4 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 {/* cd Haplotype-network  npm run dev  */}
+{/* cd gene-compare-backend  node server.js  */}

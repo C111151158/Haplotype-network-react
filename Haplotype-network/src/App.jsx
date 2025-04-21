@@ -1,86 +1,176 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TaiwanMapComponent from "./components/TaiwanMapComponent";
 import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent";
 import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
 import GeneSelector from "./components/GeneSelector";
 
-const generateColors = (num) => {
-  return Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
-};
+const generateColors = (num) =>
+  Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
 
 const App = () => {
   const [genes, setGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGene, setSelectedGene] = useState(null);
-  const [activeGene, setActiveGene] = useState(null);
   const [activeSimilarityGroup, setActiveSimilarityGroup] = useState([]);
-  const [geneSequences, setGeneSequences] = useState({});
   const [cityUpdateFlags, setCityUpdateFlags] = useState({});
   const [cityGeneData, setCityGeneData] = useState({});
+  const cityGeneDataRef = useRef({});
+  const workerRef = useRef(null);
 
-  const genesPerPage = 500;
+  const genesPerPage = 100;
   const totalPages = Math.ceil(genes.length / genesPerPage);
-  const paginatedGenes = genes.slice((currentPage - 1) * genesPerPage, currentPage * genesPerPage);
+  const paginatedGenes = genes.slice(
+    (currentPage - 1) * genesPerPage,
+    currentPage * genesPerPage
+  );
 
   const updateMapData = (updatedCities) => {
+    const partialData = {};
+
+    updatedCities.forEach((city) => {
+      const cityData = {};
+      genes.forEach((gene) => {
+        const count = gene.counts[city] || 0;
+        if (count > 0) {
+          cityData[gene.name] = count;
+        }
+      });
+      partialData[city] = cityData;
+    });
+
     setCityUpdateFlags((prev) => {
       const next = { ...prev };
-      for (const city of updatedCities) {
+      updatedCities.forEach((city) => {
         next[city] = (next[city] || 0) + 1;
-      }
+      });
       return next;
     });
+
+    // send to Web Worker
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        type: "update",
+        partialData,
+        currentData: cityGeneDataRef.current,
+      });
+    }
   };
 
-  const showAllGenes = () => setActiveGene(null);
-  const showSpecificGene = () => selectedGene && setActiveGene(selectedGene);
+  const showAllGenes = () => setSelectedGene(null);
+  const showSpecificGene = () => selectedGene && setSelectedGene(selectedGene);
+
+  const loadGeneCountsFromBackend = async (geneNames) => {
+    try {
+      const res = await fetch("http://localhost:3000/getGeneCounts");
+      const data = await res.json();
+      const countMap = new Map(data.genes.map((g) => [g.name, g.counts]));
+
+      const updatedGenes = geneNames.map((name) => ({
+        name,
+        counts: countMap.get(name) || {},
+      }));
+
+      setGenes(updatedGenes);
+
+      // Build full cityGeneData
+      const fullCityData = {};
+      updatedGenes.forEach((gene) => {
+        Object.entries(gene.counts).forEach(([city, count]) => {
+          if (!fullCityData[city]) fullCityData[city] = {};
+          fullCityData[city][gene.name] = count;
+        });
+      });
+
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: "init", data: fullCityData });
+      }
+    } catch (err) {
+      console.error("❌ 無法從後端載入 gene counts:", err);
+      setGenes(geneNames.map((name) => ({ name, counts: {} })));
+    }
+  };
+
+  const saveGeneCountsToBackend = async (updatedGenes) => {
+    try {
+      const res = await fetch("http://localhost:3000/saveGeneCounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ genes: updatedGenes }),
+      });
+      const data = await res.json();
+      console.log("✔ Gene counts 儲存成功:", data.message);
+    } catch (err) {
+      console.error("❌ Gene counts 儲存失敗:", err);
+    }
+  };
+
+  const handleEditGeneCount = (actualIndex, location, newValue) => {
+    const updatedGenes = [...genes];
+    updatedGenes[actualIndex] = {
+      ...updatedGenes[actualIndex],
+      counts: {
+        ...updatedGenes[actualIndex].counts,
+        [location]: newValue ? parseInt(newValue, 10) : 0,
+      },
+    };
+    setGenes(updatedGenes);
+    saveGeneCountsToBackend(updatedGenes);
+  };
 
   useEffect(() => {
     if (window.Worker) {
-      const worker = new Worker(new URL("./workers/fileWorker.js", import.meta.url), {
+      // Setup fileWorker
+      const fileWorker = new Worker(new URL("./workers/fileWorker.js", import.meta.url), {
         type: "module",
       });
 
-      worker.onmessage = async (event) => {
-        const {sequences } = event.data;
-      
+      fileWorker.onmessage = async (event) => {
+        const { sequences } = event.data;
+
         try {
           await fetch("http://localhost:3000/uploadSequences", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sequences }),
           });
-      
-          console.log("基因序列成功上傳到後端");
-      
-          // 💡 從後端取回 geneNames 做顯示（但不保留 sequences）
+
           const res = await fetch("http://localhost:3000/sequences");
           const data = await res.json();
-      
-          const colors = {};
+
           const generatedColors = generateColors(data.geneNames.length);
+          const colors = {};
           data.geneNames.forEach((name, index) => {
             colors[name] = generatedColors[index % generatedColors.length];
           });
-      
           setGeneColors(colors);
-          setGenes(data.geneNames.map((name) => ({ name, counts: {} })));
-          setGeneSequences({}); // 空的
+
+          await loadGeneCountsFromBackend(data.geneNames);
         } catch (error) {
-          console.error("上傳或讀取基因資料失敗:", error);
+          console.error("❌ 上傳或讀取基因資料失敗:", error);
         }
       };
-      
 
       window.handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => worker.postMessage(e.target.result);
+        reader.onload = (e) => fileWorker.postMessage(e.target.result);
         reader.readAsText(file);
       };
+
+      // Setup cityGeneDataWorker
+      const cityWorker = new Worker(new URL("./workers/cityGeneDataWorker.js", import.meta.url), {
+        type: "module",
+      });
+
+      cityWorker.onmessage = (e) => {
+        cityGeneDataRef.current = e.data;
+        setCityGeneData(e.data);
+      };
+
+      workerRef.current = cityWorker;
     }
   }, []);
 
@@ -102,7 +192,6 @@ const App = () => {
           showAllGenes={showAllGenes}
           showSpecificGene={showSpecificGene}
           geneColors={geneColors}
-          geneSequences={geneSequences}
           setActiveSimilarityGroup={setActiveSimilarityGroup}
         />
         <FilteredTaiwanMapComponent
@@ -127,13 +216,12 @@ const App = () => {
         <HaplotypeList paginatedGenes={paginatedGenes} geneColors={geneColors} />
         <GeneTable
           genes={genes}
-          setGenes={setGenes}
-          paginatedGenes={paginatedGenes}
           currentPage={currentPage}
           itemsPerPage={genesPerPage}
           updateMapData={updateMapData}
           geneColors={geneColors}
-          setCityGeneData={setCityGeneData} // 👈 傳給 GeneTable
+          setCityGeneData={setCityGeneData}
+          onEditGeneCount={handleEditGeneCount}
         />
       </div>
     </div>
