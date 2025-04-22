@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const GeneTable = ({
   genes,
@@ -9,7 +9,6 @@ const GeneTable = ({
   setCityGeneData,
   onEditGeneCount,
 }) => {
-  const [paginatedGenes, setPaginatedGenes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const locations = [
@@ -18,17 +17,19 @@ const GeneTable = ({
     "花蓮", "台東", "宜蘭",
   ];
 
-  // 篩選後的基因清單
-  const filteredGenes = genes.filter((gene) =>
-    gene.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGenes = useMemo(() => {
+    return genes.filter((gene) =>
+      gene.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [genes, searchTerm]);
 
-  useEffect(() => {
+  const paginatedGenes = useMemo(() => {
     const startIdx = (currentPage - 1) * itemsPerPage;
     const endIdx = startIdx + itemsPerPage;
-    setPaginatedGenes(filteredGenes.slice(startIdx, endIdx));
+    return filteredGenes.slice(startIdx, endIdx);
   }, [filteredGenes, currentPage, itemsPerPage]);
 
+  // ❌ 之前錯誤用 useMemo 計算並 setState，這裡改為 useEffect
   useEffect(() => {
     const cityMap = {};
     for (const loc of locations) cityMap[loc] = [];
@@ -47,7 +48,7 @@ const GeneTable = ({
     });
 
     setCityGeneData(cityMap);
-  }, [genes, geneColors, setCityGeneData]);
+  }, [genes, geneColors]);
 
   const handleEditGeneCount = (geneIndex, location, newValue) => {
     const actualIndex = (currentPage - 1) * itemsPerPage + geneIndex;
@@ -58,8 +59,6 @@ const GeneTable = ({
   return (
     <div style={{ overflowX: "auto" }}>
       <h2>基因數據表</h2>
-
-      {/* 搜尋欄 */}
       <div style={{ marginBottom: "10px" }}>
         <input
           type="text"
@@ -122,5 +121,4 @@ const GeneTable = ({
 };
 
 export default GeneTable;
-
 

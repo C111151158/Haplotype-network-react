@@ -1,8 +1,9 @@
-import React, { useMemo, memo, useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import TaiwanMapImage from "../assets/TW.png";
 import { cityCoordinates } from "../data/cityCoordinates";
 
+// 比較城市圖表是否需要更新（提高效能）
 const areEqual = (prevProps, nextProps) => {
   if (prevProps.city !== nextProps.city) return false;
   if (prevProps.chartData.totalCount !== nextProps.chartData.totalCount) return false;
@@ -24,7 +25,8 @@ const areEqual = (prevProps, nextProps) => {
   return true;
 };
 
-const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
+// 單一城市圖表
+const CityPieChart = React.memo(({ city, chartData, geneColors, position }) => {
   const { data, totalCount } = chartData;
   const outerRadius = Math.min(10 + Math.floor(totalCount / 10) * 10, 50);
 
@@ -40,7 +42,7 @@ const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
       <PieChart width={outerRadius * 2} height={outerRadius * 2}>
         <Pie data={data} dataKey="value" cx="50%" cy="50%" outerRadius={outerRadius}>
           {data.map((entry, index) => (
-            <Cell key={`cell-${city}-${index}`} fill={geneColors[entry.name]} />
+            <Cell key={`cell-${city}-${index}`} fill={geneColors[entry.name] || "#ccc"} />
           ))}
         </Pie>
         <Tooltip />
@@ -49,9 +51,25 @@ const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
   );
 }, areEqual);
 
-const FilteredTaiwanMapComponent = ({ genes, geneColors, activeGene, activeSimilarityGroup }) => {
+const FilteredTaiwanMapComponent = ({ activeGene, activeSimilarityGroup, geneColors }) => {
+  const [genes, setGenes] = useState([]);
   const [latLon, setLatLon] = useState({ lat: 0, lon: 0 });
 
+  useEffect(() => {
+    const fetchGeneCounts = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/getGeneCounts");
+        const data = await response.json();
+        setGenes(data.genes); // 假設返回格式中有 genes 屬性
+      } catch (error) {
+        console.error("無法獲取基因數據", error);
+      }
+    };
+
+    fetchGeneCounts();
+  }, []);
+
+  // 地圖參數
   const mapWidth = 400;
   const mapHeight = 600;
   const minLon = 120.0;
@@ -61,12 +79,12 @@ const FilteredTaiwanMapComponent = ({ genes, geneColors, activeGene, activeSimil
 
   const memoizedChartData = useMemo(() => {
     const result = {};
+    const targetGeneNames = [
+      ...(activeGene ? [activeGene] : []),
+      ...(activeSimilarityGroup || []),
+    ];
 
-    if (!activeGene && (!activeSimilarityGroup || activeSimilarityGroup.length === 0)) {
-      return result;
-    }
-
-    const targetGeneNames = [activeGene, ...(activeSimilarityGroup || [])];
+    if (targetGeneNames.length === 0) return result;
 
     for (const city of Object.keys(cityCoordinates)) {
       const data = [];

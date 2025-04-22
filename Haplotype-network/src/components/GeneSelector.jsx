@@ -1,5 +1,5 @@
 // GeneSelector.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FixedSizeList as List } from "react-window";
 
 const GeneSelector = ({
@@ -29,16 +29,30 @@ const GeneSelector = ({
     (resultsPage + 1) * resultsPerPage
   );
 
-  const handleSelect = (geneName) => {
-    const isDeselecting = selectedGene === geneName;
-    setSelectedGene(isDeselecting ? null : geneName);
+  const resetSelection = () => {
+    setSelectedGene(null);
     setResults([]);
     setResultsPage(0);
     setActiveSimilarityGroup([]);
+    setProgress(null);
+  };
+
+  const handleSelect = (geneName) => {
+    const isSameGene = selectedGene === geneName;
+    resetSelection();
+
+    if (isSameGene) {
+      showAllGenes();
+    } else {
+      setSelectedGene(geneName);
+      showSpecificGene();
+    }
   };
 
   const handlePageChange = (dir) => {
-    setCurrentPage((prev) => (dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, totalPages - 1)));
+    setCurrentPage((prev) =>
+      dir === "prev" ? Math.max(prev - 1, 0) : Math.min(prev + 1, totalPages - 1)
+    );
   };
 
   const handleResultsPageChange = (dir) => {
@@ -56,7 +70,6 @@ const GeneSelector = ({
     setActiveSimilarityGroup([]);
 
     try {
-      // 🔄 從後端抓 sequences
       const res = await fetch("http://localhost:3000/sequences");
       const { sequences } = await res.json();
 
@@ -92,22 +105,17 @@ const GeneSelector = ({
       <div style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: "220px" }}>
         <button
           onClick={() => {
-            setSelectedGene(null);
-            setResults([]);
-            setActiveSimilarityGroup([]);
+            resetSelection();
             showAllGenes();
           }}
         >
-          顯示所有基因
+          取消
         </button>
 
         {currentGenes.map((gene) => (
           <button
             key={gene.name}
-            onClick={() => {
-              handleSelect(gene.name);
-              showSpecificGene();
-            }}
+            onClick={() => handleSelect(gene.name)}
             style={{
               backgroundColor: selectedGene === gene.name ? "#cde" : geneColors[gene.name] || "#fff",
               color: "#000",
@@ -212,3 +220,4 @@ const GeneSelector = ({
 };
 
 export default GeneSelector;
+

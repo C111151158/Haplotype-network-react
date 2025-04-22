@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import TaiwanMapComponent from "./components/TaiwanMapComponent";
-import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent";
 import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
 import GeneSelector from "./components/GeneSelector";
+import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent"; // 引入新組件
 
 const generateColors = (num) =>
   Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
@@ -48,7 +48,6 @@ const App = () => {
       return next;
     });
 
-    // send to Web Worker
     if (workerRef.current) {
       workerRef.current.postMessage({
         type: "update",
@@ -74,7 +73,6 @@ const App = () => {
 
       setGenes(updatedGenes);
 
-      // Build full cityGeneData
       const fullCityData = {};
       updatedGenes.forEach((gene) => {
         Object.entries(gene.counts).forEach(([city, count]) => {
@@ -121,7 +119,6 @@ const App = () => {
 
   useEffect(() => {
     if (window.Worker) {
-      // Setup fileWorker
       const fileWorker = new Worker(new URL("./workers/fileWorker.js", import.meta.url), {
         type: "module",
       });
@@ -159,18 +156,6 @@ const App = () => {
         reader.onload = (e) => fileWorker.postMessage(e.target.result);
         reader.readAsText(file);
       };
-
-      // Setup cityGeneDataWorker
-      const cityWorker = new Worker(new URL("./workers/cityGeneDataWorker.js", import.meta.url), {
-        type: "module",
-      });
-
-      cityWorker.onmessage = (e) => {
-        cityGeneDataRef.current = e.data;
-        setCityGeneData(e.data);
-      };
-
-      workerRef.current = cityWorker;
     }
   }, []);
 
@@ -185,6 +170,8 @@ const App = () => {
           geneColors={geneColors}
           cityUpdateFlags={cityUpdateFlags}
         />
+        
+        {/* FilteredTaiwanMapComponent 放在 GeneSelector 的右邊 */}
         <GeneSelector
           genes={genes}
           selectedGene={selectedGene}
@@ -194,6 +181,7 @@ const App = () => {
           geneColors={geneColors}
           setActiveSimilarityGroup={setActiveSimilarityGroup}
         />
+
         <FilteredTaiwanMapComponent
           genes={genes}
           geneColors={geneColors}
@@ -229,3 +217,4 @@ const App = () => {
 };
 
 export default App;
+
