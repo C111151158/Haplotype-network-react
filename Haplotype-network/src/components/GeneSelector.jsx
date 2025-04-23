@@ -10,6 +10,7 @@ const GeneSelector = ({
   showSpecificGene,
   geneColors,
   setActiveSimilarityGroup,
+  onSimilarityResults,
 }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [customMin, setCustomMin] = useState(95);
@@ -68,6 +69,7 @@ const GeneSelector = ({
     setResults([]);
     setResultsPage(0);
     setActiveSimilarityGroup([]);
+    
 
     try {
       const res = await fetch("http://localhost:3000/sequences");
@@ -93,7 +95,10 @@ const GeneSelector = ({
       setResults(filtered);
       setResultsPage(0);
       setActiveSimilarityGroup(filtered.map((g) => g.name));
+       // ✅ 傳 gene name 陣列給 App
+      onSimilarityResults && onSimilarityResults(filtered.map((g) => g.name));
       setProgress(null);
+
     } catch (err) {
       console.error("比對錯誤:", err);
       setProgress(null);

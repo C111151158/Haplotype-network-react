@@ -171,7 +171,7 @@ const App = () => {
           cityUpdateFlags={cityUpdateFlags}
         />
         
-        {/* FilteredTaiwanMapComponent 放在 GeneSelector 的右邊 */}
+        
         <GeneSelector
           genes={genes}
           selectedGene={selectedGene}
@@ -180,12 +180,13 @@ const App = () => {
           showSpecificGene={showSpecificGene}
           geneColors={geneColors}
           setActiveSimilarityGroup={setActiveSimilarityGroup}
+          onSimilarityResults={(names) => setActiveSimilarityGroup(names)}
         />
 
         <FilteredTaiwanMapComponent
           genes={genes}
           geneColors={geneColors}
-          activeGene={selectedGene}
+          selectedGene={selectedGene}
           activeSimilarityGroup={activeSimilarityGroup}
         />
       </div>

@@ -35,7 +35,6 @@ app.get("/sequences", (req, res) => {
   res.json({ geneNames, sequences: geneSequences });
 });
 
-// === 3. 接收比對請求（使用 worker） ===
 app.post("/compare", (req, res) => {
   const { targetName, sequences } = req.body;
 
@@ -75,7 +74,7 @@ app.post("/saveGeneCounts", (req, res) => {
   res.json({ message: "Gene counts saved successfully" });
 });
 
-// === 5. 取得目前 gene counts（提供給 GeneTable） ===
+// === 5. 取得目前 gene counts  ===
 app.get("/getGeneCounts", (req, res) => {
   res.json({ genes: geneCounts });
 });
