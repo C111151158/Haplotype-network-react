@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   worker: {
     format: "es",
-    plugins: [react()], // ✅ 確保 Worker 也支援 React
+    plugins: [react()], 
   },
 });
 

@@ -8,6 +8,7 @@ const GeneTable = ({
   geneColors,
   setCityGeneData,
   onEditGeneCount,
+  setCurrentPage, // 這行是新加的，讓搜尋時可以跳回第1頁
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -29,7 +30,6 @@ const GeneTable = ({
     return filteredGenes.slice(startIdx, endIdx);
   }, [filteredGenes, currentPage, itemsPerPage]);
 
-  // ❌ 之前錯誤用 useMemo 計算並 setState，這裡改為 useEffect
   useEffect(() => {
     const cityMap = {};
     for (const loc of locations) cityMap[loc] = [];
@@ -48,12 +48,21 @@ const GeneTable = ({
     });
 
     setCityGeneData(cityMap);
-  }, [genes, geneColors]);
+  }, [genes, geneColors, setCityGeneData]);
 
-  const handleEditGeneCount = (geneIndex, location, newValue) => {
-    const actualIndex = (currentPage - 1) * itemsPerPage + geneIndex;
-    onEditGeneCount(actualIndex, location, newValue);
+  const handleEditGeneCount = (geneName, location, newValue) => {
+    const updatedCount = Math.max(0, Number(newValue) || 0);
+
+    console.log(`Editing gene: ${geneName}, location: ${location}, new count: ${updatedCount}`);
+    onEditGeneCount(geneName, location, updatedCount);
     setTimeout(() => updateMapData([location]), 0);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    if (setCurrentPage) {
+      setCurrentPage(1); // 搜尋時自動回到第1頁
+    }
   };
 
   return (
@@ -64,7 +73,7 @@ const GeneTable = ({
           type="text"
           placeholder="搜尋基因名稱"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
           style={{ padding: "5px", width: "200px" }}
         />
       </div>
@@ -80,8 +89,8 @@ const GeneTable = ({
         </thead>
         <tbody>
           {paginatedGenes.length > 0 ? (
-            paginatedGenes.map((gene, index) => (
-              <tr key={index}>
+            paginatedGenes.map((gene) => (
+              <tr key={gene.name}>
                 <td>
                   <span
                     style={{
@@ -95,13 +104,13 @@ const GeneTable = ({
                   {gene.name}
                 </td>
                 {locations.map((loc) => (
-                  <td key={`${index}-${loc}`}>
+                  <td key={`${gene.name}-${loc}`}>
                     <input
                       type="number"
                       min="0"
                       value={gene.counts?.[loc] || 0}
                       onChange={(e) =>
-                        handleEditGeneCount(index, loc, e.target.value)
+                        handleEditGeneCount(gene.name, loc, e.target.value)
                       }
                       style={{ width: "40px" }}
                     />

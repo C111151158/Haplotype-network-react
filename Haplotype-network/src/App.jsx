@@ -3,12 +3,13 @@ import TaiwanMapComponent from "./components/TaiwanMapComponent";
 import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
 import GeneSelector from "./components/GeneSelector";
-import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent"; // 引入新組件
+import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent";
 
 const generateColors = (num) =>
   Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
 
 const App = () => {
+  const [activeSection, setActiveSection] = useState("taiwanMap");
   const [genes, setGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,15 +105,20 @@ const App = () => {
     }
   };
 
-  const handleEditGeneCount = (actualIndex, location, newValue) => {
-    const updatedGenes = [...genes];
-    updatedGenes[actualIndex] = {
-      ...updatedGenes[actualIndex],
-      counts: {
-        ...updatedGenes[actualIndex].counts,
-        [location]: newValue ? parseInt(newValue, 10) : 0,
-      },
-    };
+  // ⭐ 修正後的 handleEditGeneCount
+  const handleEditGeneCount = (geneName, location, newValue) => {
+    const updatedGenes = genes.map((gene) => {
+      if (gene.name === geneName) {
+        return {
+          ...gene,
+          counts: {
+            ...gene.counts,
+            [location]: newValue ? parseInt(newValue, 10) : 0,
+          },
+        };
+      }
+      return gene;
+    });
     setGenes(updatedGenes);
     saveGeneCountsToBackend(updatedGenes);
   };
@@ -163,40 +169,55 @@ const App = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>
       <input type="file" accept=".fa,.fasta,.txt" onChange={(e) => window.handleFileChange(e)} />
 
-      <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-        <TaiwanMapComponent
-          genes={genes}
-          cityGeneData={cityGeneData}
-          geneColors={geneColors}
-          cityUpdateFlags={cityUpdateFlags}
-        />
-        
-        
-        <GeneSelector
-          genes={genes}
-          selectedGene={selectedGene}
-          setSelectedGene={setSelectedGene}
-          showAllGenes={showAllGenes}
-          showSpecificGene={showSpecificGene}
-          geneColors={geneColors}
-          setActiveSimilarityGroup={setActiveSimilarityGroup}
-          onSimilarityResults={(names) => setActiveSimilarityGroup(names)}
-        />
-
-        <FilteredTaiwanMapComponent
-          genes={genes}
-          geneColors={geneColors}
-          selectedGene={selectedGene}
-          activeSimilarityGroup={activeSimilarityGroup}
-        />
+      <div style={{ marginBottom: "20px" }}>
+        <button onClick={() => setActiveSection("taiwanMap")}>ALL sequences</button>
+        <button onClick={() => setActiveSection("geneComponents")}>sequences Components</button>
       </div>
 
+      {activeSection === "taiwanMap" && (
+        <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+          <TaiwanMapComponent
+            genes={genes}
+            cityGeneData={cityGeneData}
+            geneColors={geneColors}
+            cityUpdateFlags={cityUpdateFlags}
+          />
+        </div>
+      )}
+
+      {activeSection === "geneComponents" && (
+        <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+          <GeneSelector
+            genes={genes}
+            selectedGene={selectedGene}
+            setSelectedGene={setSelectedGene}
+            showAllGenes={showAllGenes}
+            showSpecificGene={showSpecificGene}
+            geneColors={geneColors}
+            setActiveSimilarityGroup={setActiveSimilarityGroup}
+            onSimilarityResults={(names) => setActiveSimilarityGroup(names)}
+          />
+          <FilteredTaiwanMapComponent
+            genes={genes}
+            geneColors={geneColors}
+            selectedGene={selectedGene}
+            activeSimilarityGroup={activeSimilarityGroup}
+          />
+        </div>
+      )}
+
       <div style={{ marginTop: "10px" }}>
-        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+        <button
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+        >
           上一頁
         </button>
         <span> 第 {currentPage} 頁 / 共 {totalPages} 頁 </span>
-        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+        <button
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+        >
           下一頁
         </button>
       </div>
@@ -211,6 +232,7 @@ const App = () => {
           geneColors={geneColors}
           setCityGeneData={setCityGeneData}
           onEditGeneCount={handleEditGeneCount}
+          setCurrentPage={setCurrentPage} // ⭐ 加這行
         />
       </div>
     </div>
@@ -218,4 +240,3 @@ const App = () => {
 };
 
 export default App;
-

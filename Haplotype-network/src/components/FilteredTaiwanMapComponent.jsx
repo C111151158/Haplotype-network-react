@@ -17,10 +17,7 @@ const areEqual = (prevProps, nextProps) => {
   if (prevData.length !== nextData.length) return false;
 
   for (let i = 0; i < prevData.length; i++) {
-    if (
-      prevData[i].name !== nextData[i].name ||
-      prevData[i].value !== nextData[i].value
-    ) {
+    if (prevData[i].name !== nextData[i].name || prevData[i].value !== nextData[i].value) {
       return false;
     }
   }
@@ -57,22 +54,8 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
   const [genes, setGenes] = useState([]);
   const [latLon, setLatLon] = useState({ lat: 0, lon: 0 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");  // 搜尋框的文字
-  const [selectedGenes, setSelectedGenes] = useState([]);  // 追蹤選擇的基因
-
-  useEffect(() => {
-    const fetchGeneCounts = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/getGeneCounts");
-        const data = await response.json();
-        setGenes(data.genes);
-      } catch (error) {
-        console.error("無法獲取基因數據", error);
-      }
-    };
-
-    fetchGeneCounts();
-  }, []);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGenes, setSelectedGenes] = useState([]);
 
   const targetGeneNames = useMemo(() => {
     return [
@@ -81,7 +64,30 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
     ];
   }, [selectedGene, activeSimilarityGroup]);
 
-  // 計算基因名稱分頁
+  useEffect(() => {
+    const fetchGeneCounts = async () => {
+      if (targetGeneNames.length === 0) {
+        setGenes([]);
+        return;
+      }
+      try {
+        const response = await fetch("http://localhost:3000/getGeneCountsByNames", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ names: targetGeneNames }),
+        });
+        const data = await response.json();
+        setGenes(data.genes);
+      } catch (error) {
+        console.error("無法獲取基因數據", error);
+      }
+    };
+
+    fetchGeneCounts();
+  }, [targetGeneNames]);
+
   const totalPages = Math.ceil(targetGeneNames.length / genesPerPage);
 
   const paginatedGeneNames = useMemo(() => {
@@ -90,14 +96,12 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
     return targetGeneNames.slice(start, end);
   }, [targetGeneNames, currentPage]);
 
-  // 根據搜尋框過濾基因名稱
   const filteredGeneNames = useMemo(() => {
     return paginatedGeneNames.filter((name) =>
       name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [paginatedGeneNames, searchTerm]);
 
-  // 計算每個城市的 pie chart 資料
   const memoizedChartData = useMemo(() => {
     const result = {};
 
@@ -105,7 +109,7 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
       const data = [];
       let totalCount = 0;
 
-      for (const geneName of targetGeneNames) {  // 這裡顯示全部基因，不分頁
+      for (const geneName of selectedGenes) {
         const gene = genes.find((g) => g.name === geneName);
         if (!gene) continue;
 
@@ -122,7 +126,7 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
     }
 
     return result;
-  }, [genes, targetGeneNames]);
+  }, [genes, selectedGenes]);
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -162,9 +166,12 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
     );
   };
 
+  useEffect(() => {
+    setSelectedGenes(targetGeneNames);
+  }, [targetGeneNames]);
+
   return (
     <div style={{ display: "flex" }}>
-      {/* 地圖區塊 */}
       <div
         style={{ position: "relative", width: `${mapWidth}px`, height: `${mapHeight}px` }}
         onMouseMove={handleMouseMove}
@@ -231,10 +238,7 @@ const FilteredTaiwanMapComponent = ({ selectedGene, activeSimilarityGroup, geneC
             上一頁
           </button>
           <span>第 {currentPage} 頁 / 共 {totalPages} 頁</span>
-          <button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-          >
+          <button onClick={handleNextPage} disabled={currentPage === totalPages}>
             下一頁
           </button>
         </div>

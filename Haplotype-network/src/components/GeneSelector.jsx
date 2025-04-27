@@ -95,7 +95,7 @@ const GeneSelector = ({
       setResults(filtered);
       setResultsPage(0);
       setActiveSimilarityGroup(filtered.map((g) => g.name));
-       // ✅ 傳 gene name 陣列給 App
+       // 傳 gene name 陣列給 App
       onSimilarityResults && onSimilarityResults(filtered.map((g) => g.name));
       setProgress(null);
 
