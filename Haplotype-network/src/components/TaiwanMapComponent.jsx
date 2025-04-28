@@ -89,7 +89,7 @@ const TaiwanMapComponent = ({ genes, cityGeneData, geneColors }) => {
     const result = {};
     for (const [city, genes] of Object.entries(cityGeneData)) {
       if (!Array.isArray(genes)) {
-        console.warn(`⚠ 城市 ${city} 的 genes 不是陣列:`, genes);
+        
         continue;
       }
 
@@ -148,7 +148,7 @@ const TaiwanMapComponent = ({ genes, cityGeneData, geneColors }) => {
       </div>
 
       {/* 基因選單區域 */}
-      <div style={{ display: "flex", flexDirection: "column", width: "260px" }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "700px" }}>
         <div style={{ flex: "1", overflowY: "auto", maxHeight: "560px" }}>
           <h4>選擇顯示基因：</h4>
           <input
@@ -156,7 +156,7 @@ const TaiwanMapComponent = ({ genes, cityGeneData, geneColors }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="搜尋基因名稱"
-            style={{ width: "100%", marginBottom: "8px" }}
+            style={{ width: "95%", marginBottom: "8px" }}
           />
           <div style={{ display: "flex", gap: "5px", marginBottom: "8px" }}>
             <button onClick={handleSelectAll}>全選</button>

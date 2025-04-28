@@ -63,7 +63,7 @@ const App = () => {
 
   const loadGeneCountsFromBackend = async (geneNames) => {
     try {
-      const res = await fetch("http://localhost:3000/getGeneCounts");
+      const res = await fetch("/api/getGeneCounts");
       const data = await res.json();
       const countMap = new Map(data.genes.map((g) => [g.name, g.counts]));
 
@@ -93,7 +93,7 @@ const App = () => {
 
   const saveGeneCountsToBackend = async (updatedGenes) => {
     try {
-      const res = await fetch("http://localhost:3000/saveGeneCounts", {
+      const res = await fetch("/api/saveGeneCounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ genes: updatedGenes }),
@@ -133,13 +133,13 @@ const App = () => {
         const { sequences } = event.data;
 
         try {
-          await fetch("http://localhost:3000/uploadSequences", {
+          await fetch("/api/uploadSequences", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sequences }),
           });
 
-          const res = await fetch("http://localhost:3000/sequences");
+          const res = await fetch("/api/sequences");
           const data = await res.json();
 
           const generatedColors = generateColors(data.geneNames.length);

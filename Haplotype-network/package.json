@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "proxy": "http://localhost:3000",
-
   "scripts": {
-    "dev": "vite",
+
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "vite",
+    "dev:backend": "node ./gene-compare-backend/server.js",
+
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -25,6 +28,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",

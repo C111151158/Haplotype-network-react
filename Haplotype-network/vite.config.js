@@ -7,6 +7,17 @@ export default defineConfig({
     format: "es",
     plugins: [react()], 
   },
+
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // 你的後端
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''), // 把 /api 去掉
+      },
+    },
+  },
+
 });
 
 
