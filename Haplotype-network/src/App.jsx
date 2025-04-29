@@ -11,7 +11,6 @@ const generateColors = (num) =>
 const App = () => {
   const [activeSection, setActiveSection] = useState("taiwanMap");
   const [genes, setGenes] = useState([]);
-  const [filteredGenes, setFilteredGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGene, setSelectedGene] = useState(null);
@@ -86,25 +85,7 @@ const App = () => {
     }
   };
 
-  const loadFilteredGeneCounts = async (names) => {
-    if (!names || names.length === 0) {
-      setFilteredGenes([]);
-      return;
-    }
-    try {
-      const res = await fetch("/api/getGeneCountsByNames", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ names }),
-      });
-      const data = await res.json();
-     
-      setFilteredGenes(data.genes);
-    } catch (error) {
-      console.error("❌ 無法從後端抓取特定基因:", error);
-      setFilteredGenes([]);
-    }
-  };
+  
 
   const saveGeneCountsToBackend = async (updatedGenes) => {
     try {
@@ -179,13 +160,7 @@ const App = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (activeSimilarityGroup.length > 0) {
-      loadFilteredGeneCounts(activeSimilarityGroup);
-    } else {
-      setFilteredGenes([]);
-    }
-  }, [activeSimilarityGroup]);
+ 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>

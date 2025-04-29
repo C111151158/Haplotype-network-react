@@ -3,14 +3,13 @@ import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import TaiwanMapImage from "../assets/TW.png";
 import { cityCoordinates } from "../data/cityCoordinates";
 
-// 比對是否重渲染 PieChart
+// --- PieChart 優化渲染比較函式 ---
 const areEqual = (prevProps, nextProps) => {
   if (prevProps.city !== nextProps.city) return false;
   if (prevProps.chartData.totalCount !== nextProps.chartData.totalCount) return false;
 
   const prevData = prevProps.chartData.data;
   const nextData = nextProps.chartData.data;
-
   if (prevData.length !== nextData.length) return false;
 
   for (let i = 0; i < prevData.length; i++) {
@@ -22,7 +21,7 @@ const areEqual = (prevProps, nextProps) => {
   return true;
 };
 
-// 單一城市 Pie 圖元件
+// --- 單一城市 Pie 圖元件 ---
 const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
   const { data, totalCount } = chartData;
   const outerRadius = Math.min(10 + Math.floor(totalCount / 10) * 10, 50);
@@ -48,21 +47,31 @@ const CityPieChart = memo(({ city, chartData, geneColors, position }) => {
   );
 }, areEqual);
 
-// 主元件
-const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedGene, activeSimilarityGroup }) => {
+// --- 主元件 ---
+const FilteredTaiwanMapComponent = ({
+  genes,
+  cityGeneData,
+  geneColors,
+  selectedGene,
+  activeSimilarityGroup,
+}) => {
   const [latLon, setLatLon] = useState({ lat: 0, lon: 0 });
-  const [selectedGenes, setSelectedGenes] = useState(() =>
-    Array.from(new Set(Object.values(cityGeneData).flat().map((g) => g.name)))
-  );
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const genesPerPage = 100;
 
   const allGenes = useMemo(() => genes.map((g) => g.name), [genes]);
 
+  // 限制顯示基因（根據 selectedGene + similarity group）
   useEffect(() => {
-    setSelectedGenes(allGenes);
-  }, [allGenes]);
+    const allowed = new Set([
+      selectedGene,
+      ...(Array.isArray(activeSimilarityGroup) ? activeSimilarityGroup : []),
+    ]);
+    setSelectedGenes(Array.from(allowed).filter(Boolean));
+  }, [selectedGene, activeSimilarityGroup]);
+
+  const [selectedGenes, setSelectedGenes] = useState([]);
 
   const filteredGeneList = useMemo(() => {
     return allGenes.filter((name) =>
@@ -85,13 +94,11 @@ const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedG
   const handleSelectAll = () => setSelectedGenes(filteredGeneList);
   const handleClearAll = () => setSelectedGenes([]);
 
+  // 濾出城市中所選基因的資料
   const filteredCityGeneData = useMemo(() => {
     const result = {};
     for (const [city, genes] of Object.entries(cityGeneData)) {
-      if (!Array.isArray(genes)) {
-        
-        continue;
-      }
+      if (!Array.isArray(genes)) continue;
 
       const data = genes.filter((g) => selectedGenes.includes(g.name));
       if (data.length > 0) {
@@ -113,28 +120,11 @@ const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedG
     setLatLon({ lat: lat.toFixed(4), lon: lon.toFixed(4) });
   };
 
-  useEffect(() => {
-    const allowedGenes = new Set([
-      selectedGene,
-      ...(Array.isArray(activeSimilarityGroup) ? activeSimilarityGroup : []),
-    ]);
-    setSelectedGenes((prev) => prev.filter((g) => allowedGenes.has(g)));
-  }, [selectedGene, activeSimilarityGroup]);
-  
-
-  useEffect(() => {
-    const allowed = new Set([
-      selectedGene,
-      ...(Array.isArray(activeSimilarityGroup) ? activeSimilarityGroup : []),
-    ]);
-    setSelectedGenes(Array.from(allowed).filter(Boolean)); // 過濾掉 undefined/null
-  }, [selectedGene, activeSimilarityGroup]);
-
   return (
     <div style={{ display: "flex", gap: "10px" }}>
-      {/* 地圖區域 */}
+      {/* --- 地圖區域 --- */}
       <div
-        style={{ position: "relative", width: `400px`, height: `600px` }}
+        style={{ position: "relative", width: "400px", height: "600px" }}
         onMouseMove={handleMouseMove}
       >
         <img src={TaiwanMapImage} alt="Taiwan Map" width={400} height={600} />
@@ -164,9 +154,9 @@ const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedG
         </div>
       </div>
 
-      {/* 基因選單區域 */}
+      {/* --- 基因選單區域 --- */}
       <div style={{ display: "flex", flexDirection: "column", width: "700px" }}>
-        <div style={{ flex: "1", overflowY: "auto", maxHeight: "560px" }}>
+        <div style={{ flex: 1, overflowY: "auto", maxHeight: "560px" }}>
           <h4>選擇顯示基因：</h4>
           <input
             type="text"
@@ -179,23 +169,34 @@ const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedG
             <button onClick={handleSelectAll}>全選</button>
             <button onClick={handleClearAll}>清除選擇</button>
           </div>
+
           {currentGenes.map((name) => {
-  const isEnabled = name === selectedGene || (Array.isArray(activeSimilarityGroup) && activeSimilarityGroup.includes(name));
-  return (
-    <label key={name} style={{ display: "flex", alignItems: "center", gap: "6px", opacity: isEnabled ? 1 : 0.4 }}>
-      <input
-        type="checkbox"
-        checked={selectedGenes.includes(name)}
-        onChange={() => toggleGene(name)}
-        disabled={!isEnabled}
-      />
-      <span style={{ color: geneColors[name] || "black" }}>{name}</span>
-    </label>
-  );
-})}
+            const isEnabled =
+              name === selectedGene ||
+              (Array.isArray(activeSimilarityGroup) && activeSimilarityGroup.includes(name));
+            return (
+              <label
+                key={name}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  opacity: isEnabled ? 1 : 0.4,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedGenes.includes(name)}
+                  onChange={() => toggleGene(name)}
+                  disabled={!isEnabled}
+                />
+                <span style={{ color: geneColors[name] || "black" }}>{name}</span>
+              </label>
+            );
+          })}
         </div>
 
-        {/* 分頁控制 */}
+        {/* --- 分頁控制 --- */}
         <div style={{ marginTop: "10px", display: "flex", gap: "10px", justifyContent: "center" }}>
           <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
             上一頁
@@ -209,10 +210,6 @@ const FilteredTaiwanMapComponent = ({ genes, cityGeneData, geneColors, selectedG
           </button>
         </div>
       </div>
-
-     
-
-    
     </div>
   );
 };
