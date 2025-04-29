@@ -46,7 +46,7 @@ const GeneSelector = ({
       showAllGenes();
     } else {
       setSelectedGene(geneName);
-      showSpecificGene();
+      
     }
   };
 

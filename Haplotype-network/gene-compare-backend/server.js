@@ -79,7 +79,7 @@
    res.json({ genes: geneCounts });
  });
  
- // ✅ 新增：根據基因名稱陣列，回傳指定的 counts
+ // 新增：根據基因名稱陣列，回傳指定的 counts
  app.post("/getGeneCountsByNames", (req, res) => {
    const { names } = req.body;
    if (!Array.isArray(names)) {

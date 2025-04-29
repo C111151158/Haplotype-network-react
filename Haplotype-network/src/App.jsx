@@ -11,13 +11,13 @@ const generateColors = (num) =>
 const App = () => {
   const [activeSection, setActiveSection] = useState("taiwanMap");
   const [genes, setGenes] = useState([]);
+  const [filteredGenes, setFilteredGenes] = useState([]);
   const [geneColors, setGeneColors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGene, setSelectedGene] = useState(null);
   const [activeSimilarityGroup, setActiveSimilarityGroup] = useState([]);
   const [cityUpdateFlags, setCityUpdateFlags] = useState({});
   const [cityGeneData, setCityGeneData] = useState({});
-  const cityGeneDataRef = useRef({});
   const workerRef = useRef(null);
 
   const genesPerPage = 100;
@@ -29,14 +29,11 @@ const App = () => {
 
   const updateMapData = (updatedCities) => {
     const partialData = {};
-
     updatedCities.forEach((city) => {
       const cityData = {};
       genes.forEach((gene) => {
         const count = gene.counts[city] || 0;
-        if (count > 0) {
-          cityData[gene.name] = count;
-        }
+        if (count > 0) cityData[gene.name] = count;
       });
       partialData[city] = cityData;
     });
@@ -53,13 +50,11 @@ const App = () => {
       workerRef.current.postMessage({
         type: "update",
         partialData,
-        currentData: cityGeneDataRef.current,
       });
     }
   };
 
   const showAllGenes = () => setSelectedGene(null);
-  const showSpecificGene = () => selectedGene && setSelectedGene(selectedGene);
 
   const loadGeneCountsFromBackend = async (geneNames) => {
     try {
@@ -91,6 +86,26 @@ const App = () => {
     }
   };
 
+  const loadFilteredGeneCounts = async (names) => {
+    if (!names || names.length === 0) {
+      setFilteredGenes([]);
+      return;
+    }
+    try {
+      const res = await fetch("/api/getGeneCountsByNames", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ names }),
+      });
+      const data = await res.json();
+     
+      setFilteredGenes(data.genes);
+    } catch (error) {
+      console.error("❌ 無法從後端抓取特定基因:", error);
+      setFilteredGenes([]);
+    }
+  };
+
   const saveGeneCountsToBackend = async (updatedGenes) => {
     try {
       const res = await fetch("/api/saveGeneCounts", {
@@ -105,7 +120,6 @@ const App = () => {
     }
   };
 
-  // ⭐ 修正後的 handleEditGeneCount
   const handleEditGeneCount = (geneName, location, newValue) => {
     const updatedGenes = genes.map((gene) => {
       if (gene.name === geneName) {
@@ -165,6 +179,14 @@ const App = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (activeSimilarityGroup.length > 0) {
+      loadFilteredGeneCounts(activeSimilarityGroup);
+    } else {
+      setFilteredGenes([]);
+    }
+  }, [activeSimilarityGroup]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>
       <input type="file" accept=".fa,.fasta,.txt" onChange={(e) => window.handleFileChange(e)} />
@@ -174,50 +196,52 @@ const App = () => {
         <button onClick={() => setActiveSection("geneComponents")}>sequences Components</button>
       </div>
 
-      {activeSection === "taiwanMap" && (
-        <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-          <TaiwanMapComponent
-            genes={genes}
-            cityGeneData={cityGeneData}
-            geneColors={geneColors}
-            cityUpdateFlags={cityUpdateFlags}
-          />
-        </div>
-      )}
+      <div
+        style={{
+          display: activeSection === "taiwanMap" ? "flex" : "none",
+          gap: "20px",
+          alignItems: "flex-start",
+        }}
+      >
+        <TaiwanMapComponent
+          genes={genes}
+          cityGeneData={cityGeneData}
+          geneColors={geneColors}
+          cityUpdateFlags={cityUpdateFlags}
+        />
+      </div>
 
-      {activeSection === "geneComponents" && (
-        <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-          <GeneSelector
-            genes={genes}
-            selectedGene={selectedGene}
-            setSelectedGene={setSelectedGene}
-            showAllGenes={showAllGenes}
-            showSpecificGene={showSpecificGene}
-            geneColors={geneColors}
-            setActiveSimilarityGroup={setActiveSimilarityGroup}
-            onSimilarityResults={(names) => setActiveSimilarityGroup(names)}
-          />
-          <FilteredTaiwanMapComponent
-            genes={genes}
-            geneColors={geneColors}
-            selectedGene={selectedGene}
-            activeSimilarityGroup={activeSimilarityGroup}
-          />
-        </div>
-      )}
+      <div
+        style={{
+          display: activeSection === "geneComponents" ? "flex" : "none",
+          gap: "20px",
+          alignItems: "flex-start",
+        }}
+      >
+        <GeneSelector
+          genes={genes}
+          selectedGene={selectedGene}
+          setSelectedGene={setSelectedGene}
+          showAllGenes={showAllGenes}
+          geneColors={geneColors}
+          setActiveSimilarityGroup={setActiveSimilarityGroup}
+        />
+        <FilteredTaiwanMapComponent
+          genes={genes}
+          cityUpdateFlags={cityUpdateFlags}
+          cityGeneData={cityGeneData}
+          geneColors={geneColors}
+          selectedGene={selectedGene}
+          activeSimilarityGroup={activeSimilarityGroup}
+        />
+      </div>
 
       <div style={{ marginTop: "10px" }}>
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-        >
+        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
           上一頁
         </button>
         <span> 第 {currentPage} 頁 / 共 {totalPages} 頁 </span>
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          disabled={currentPage === totalPages}
-        >
+        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
           下一頁
         </button>
       </div>
@@ -232,7 +256,7 @@ const App = () => {
           geneColors={geneColors}
           setCityGeneData={setCityGeneData}
           onEditGeneCount={handleEditGeneCount}
-          setCurrentPage={setCurrentPage} // ⭐ 加這行
+          setCurrentPage={setCurrentPage}
         />
       </div>
     </div>
@@ -240,3 +264,4 @@ const App = () => {
 };
 
 export default App;
+

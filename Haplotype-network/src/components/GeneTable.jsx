@@ -53,7 +53,7 @@ const GeneTable = ({
   const handleEditGeneCount = (geneName, location, newValue) => {
     const updatedCount = Math.max(0, Number(newValue) || 0);
 
-    console.log(`Editing gene: ${geneName}, location: ${location}, new count: ${updatedCount}`);
+   
     onEditGeneCount(geneName, location, updatedCount);
     setTimeout(() => updateMapData([location]), 0);
   };
