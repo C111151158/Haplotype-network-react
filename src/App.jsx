@@ -4,6 +4,7 @@ import HaplotypeList from "./components/HaplotypeList";
 import GeneTable from "./components/GeneTable";
 import GeneSelector from "./components/GeneSelector";
 import FilteredTaiwanMapComponent from "./components/FilteredTaiwanMapComponent";
+import './HaplotypeNetworkApp.css';
 
 // 生成基因顏色的函數
 const generateColors = (num) =>
@@ -190,12 +191,13 @@ const HaplotypeNetworkApp = ({ initialFileContent = "" }) => {
 
   // 渲染 UI
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px" }}>
-      <div style={{ marginBottom: "20px" }}>
-        <button onClick={() => setActiveSection("taiwanMap")}>ALL sequences</button>
-        <button onClick={() => setActiveSection("geneComponents")}>sequences Components</button>
-      
-      <input
+  <div className="app-container">
+    <div className="button-group">
+      <button onClick={() => setActiveSection("taiwanMap")}>ALL sequences</button>
+      <button onClick={() => setActiveSection("geneComponents")}>sequences Components</button>
+    </div>
+
+   <input
     type="file"
     accept=".fa,.fasta"
     onChange={async (e) => {
@@ -211,76 +213,62 @@ const HaplotypeNetworkApp = ({ initialFileContent = "" }) => {
       }
     }}
     style={{ marginLeft: "20px" }}
-  />
-      
-      </div>
+  /> 
 
-      <div
-        style={{
-          display: activeSection === "taiwanMap" ? "flex" : "none",
-          gap: "20px",
-          alignItems: "flex-start",
-        }}
-      >
-        <TaiwanMapComponent
-          genes={genes}
-          cityGeneData={cityGeneData}
-          geneColors={geneColors}
-          cityUpdateFlags={cityUpdateFlags}
-        />
-      </div>
-
-      <div
-        style={{
-          display: activeSection === "geneComponents" ? "flex" : "none",
-          gap: "20px",
-          alignItems: "flex-start",
-        }}
-      >
-        <GeneSelector
-          genes={genes}
-          selectedGene={selectedGene}
-          setSelectedGene={setSelectedGene}
-          showAllGenes={showAllGenes}
-          geneColors={geneColors}
-          setActiveSimilarityGroup={setActiveSimilarityGroup}
-        />
-        <FilteredTaiwanMapComponent
-          genes={genes}
-          cityUpdateFlags={cityUpdateFlags}
-          cityGeneData={cityGeneData}
-          geneColors={geneColors}
-          selectedGene={selectedGene}
-          activeSimilarityGroup={activeSimilarityGroup}
-        />
-      </div>
-
-      <div style={{ marginTop: "10px" }}>
-        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
-          上一頁
-        </button>
-        <span> 第 {currentPage} 頁 / 共 {totalPages} 頁 </span>
-        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-          下一頁
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        <HaplotypeList paginatedGenes={paginatedGenes} geneColors={geneColors} />
-        <GeneTable
-          genes={genes}
-          currentPage={currentPage}
-          itemsPerPage={genesPerPage}
-          updateMapData={updateMapData}
-          geneColors={geneColors}
-          setCityGeneData={setCityGeneData}
-          onEditGeneCount={handleEditGeneCount}
-          setCurrentPage={setCurrentPage}
-          onEditGeneCountBulk={handleEditGeneCountBulk}
-        />
-      </div>
+    <div className={`section ${activeSection === "taiwanMap" ? "" : "hidden"}`}>
+      <TaiwanMapComponent
+        genes={genes}
+        cityGeneData={cityGeneData}
+        geneColors={geneColors}
+        cityUpdateFlags={cityUpdateFlags}
+      />
     </div>
-  );
+
+    <div className={`section ${activeSection === "geneComponents" ? "" : "hidden"}`}>
+      <GeneSelector
+        genes={genes}
+        selectedGene={selectedGene}
+        setSelectedGene={setSelectedGene}
+        showAllGenes={showAllGenes}
+        geneColors={geneColors}
+        setActiveSimilarityGroup={setActiveSimilarityGroup}
+      />
+      <FilteredTaiwanMapComponent
+        genes={genes}
+        cityUpdateFlags={cityUpdateFlags}
+        cityGeneData={cityGeneData}
+        geneColors={geneColors}
+        selectedGene={selectedGene}
+        activeSimilarityGroup={activeSimilarityGroup}
+      />
+    </div>
+
+    <div className="pagination">
+      <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+        上一頁
+      </button>
+      <span> 第 {currentPage} 頁 / 共 {totalPages} 頁 </span>
+      <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+        下一頁
+      </button>
+    </div>
+
+    <div className="main-content">
+      <HaplotypeList paginatedGenes={paginatedGenes} geneColors={geneColors} />
+      <GeneTable
+        genes={genes}
+        currentPage={currentPage}
+        itemsPerPage={genesPerPage}
+        updateMapData={updateMapData}
+        geneColors={geneColors}
+        setCityGeneData={setCityGeneData}
+        onEditGeneCount={handleEditGeneCount}
+        setCurrentPage={setCurrentPage}
+        onEditGeneCountBulk={handleEditGeneCountBulk}
+      />
+    </div>
+  </div>
+);
 };
 
 export default HaplotypeNetworkApp;
