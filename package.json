@@ -7,6 +7,7 @@
 
   "homepage": "https://github.com/C111151158/Haplotype-network-react",
   "scripts": {
+    "predev": "node predev.js",
     "dev": " concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",
     "dev:backend": "node ./gene-compare-backend/server.js",
