@@ -11,7 +11,7 @@ const generateColors = (num) =>
   Array.from({ length: num }, (_, i) => `hsl(${(i * 137) % 360}, 70%, 50%)`);
 
 const HaplotypeNetworkApp = ({ initialFileContent = "" }) => {
-  // 狀態變量
+  
   const [activeSection, setActiveSection] = useState("taiwanMap"); // 目前顯示的區塊 (地圖 or 基因組件)
   const [genes, setGenes] = useState([]); // 基因數據
   const [geneColors, setGeneColors] = useState({}); // 基因顏色映射

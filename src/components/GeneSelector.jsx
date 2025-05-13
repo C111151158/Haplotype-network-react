@@ -7,7 +7,6 @@ const GeneSelector = ({
   selectedGene,            // 當前選取的基因名稱
   setSelectedGene,         // 設定選取基因
   showAllGenes,            // 顯示所有基因（地圖用）
-  showSpecificGene,        // 顯示特定基因（未使用，可移除）
   geneColors,              // 基因對應顏色
   setActiveSimilarityGroup, // 設定目前相似基因群組
   onSimilarityResults,     // 比對完成後的回呼函式

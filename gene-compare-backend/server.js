@@ -28,19 +28,19 @@ app.post("/uploadSequences", (req, res) => {
   res.json({ message: "Gene sequences uploaded and stored." });
 });
 
-// ✅ 原本的：一次回傳所有名稱與序列
+// 一次回傳所有名稱與序列
 app.get("/sequences", (req, res) => {
   const geneNames = Object.keys(geneSequences);
   res.json({ geneNames, sequences: geneSequences });
 });
 
-// ✅ 新增：只回傳 gene 名稱（適合用於前端分頁）
+// 新增：只回傳 gene 名稱（適合用於前端分頁）
 app.get("/sequences/gene-names", (req, res) => {
   const geneNames = Object.keys(geneSequences);
   res.json({ geneNames });
 });
 
-// ✅ 新增：根據 gene 名稱單獨取得序列（點選才抓）
+// 新增：根據 gene 名稱單獨取得序列（點選才抓）
 app.get("/sequences/:geneName", (req, res) => {
   const geneName = req.params.geneName;
   const sequence = geneSequences[geneName];
