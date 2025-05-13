@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/Haplotype-network/", // ✅ 確保這跟 GitHub Repo 名一致
+  base: "/Haplotype-network-react/", // ✅ 確保這跟 GitHub Repo 名一致
 
   plugins: [react()],
 
