@@ -23,7 +23,7 @@ const HaplotypeNetworkApp = ({ initialFileContent = "" }) => {
   const workerRef = useRef(null); // 用來儲存 Web Worker 的引用
 
   // 每頁顯示的基因數量
-  const genesPerPage = 100;
+  const genesPerPage = 20;
   const totalPages = Math.ceil(genes.length / genesPerPage); // 計算總頁數
   const paginatedGenes = genes.slice(
     (currentPage - 1) * genesPerPage,
