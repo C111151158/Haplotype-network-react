@@ -2,22 +2,20 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/Haplotype-network-react/", // ✅ 確保這跟 GitHub Repo 名一致
-
   plugins: [react()],
-
   worker: {
     format: "es",
-    plugins: () => [react()], // ✅ 改成 function 回傳陣列
+    plugins: [react()], 
   },
 
   server: {
     proxy: {
       '/api': {
-        target: ' http://localhost:3000',
+        target: 'http://localhost:3000', // 後端
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, ''), 
       },
     },
   },
+
 });
