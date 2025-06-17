@@ -1,0 +1,13 @@
+{
+  "name": "haplotype-server",
+  "version": "1.0.0",
+  "main": "gene-compare-backend/server.js",
+  "scripts": {
+    "start": "node gene-compare-backend/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.0.0",
+    "cors": "^2.8.5"
+  }
+}
